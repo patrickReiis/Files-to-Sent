@@ -21,7 +21,10 @@ export class UserAccount {
 	@Column('varchar', { length: 20, nullable:true })
 	uniqueString:string|null // used to activate the account
 	
-	@Column('varchar', { length: 64, default: null})
-	sessionId:string
+	@Column('varchar', { length: 64, default: null, unique:true})
+	sessionId:string|null
+
+	@Column('timestamp', {nullable:true})
+	cookieExpires: Date|null;
 
 }

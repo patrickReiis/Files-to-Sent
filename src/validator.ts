@@ -3,6 +3,8 @@ const request_EmailNotValid = `The email is not valid`;
 const request_UsernameNotValid = `The username can only contain letters and underscores between words`;
 const request_PasswordNotValid = `The password must have at least ${passwordLength} characters`;
 const request_PasswordDoesNotMatch = `The password does not match`;
+const request_SendStringPass = `The password format must be a string`;
+const request_SendStringEmail = `The email must be a string`;
 import { UserAccount } from './entity/UserAccount';
 import { strict as assert } from 'assert';
 import { dataSource } from './get-data-source';
@@ -39,7 +41,10 @@ function emailValidate(emailArr:string[]){
 	const email = emailArr[0];
 	const errorMessage = [];
 
-	if ( !isEmailValid(email) ){
+	if (typeof email !== 'string'){
+		errorMessage.push(request_SendStringEmail) 
+	}
+	else if ( !isEmailValid(email) ){
 		errorMessage.push(request_EmailNotValid)
 	}
 
@@ -93,6 +98,9 @@ function passwordValidate(pass:string[]){ // pass = password
 		errorMessages.push(request_PasswordDoesNotMatch)
 	}
 
+	if (typeof pass1 !== 'string' || typeof pass2 !== 'string'){
+		errorMessages.push(request_SendStringPass)
+	}	
 	return errorMessages
 } 
 
@@ -102,11 +110,10 @@ async function validRegister(field:string[], isValid:(field:string[]) => string[
 
 export async function getAllRegisterValidation(bodyObj:any){
 	// A list of functions will iterate and get all erros messages (if any)
-	// If there is not a single error, success will be se to true
+	// If there is not a single error, success will be set to true
 	// And the function will return
 
 	const successOrErrorMsg:any = { 'success': false, 'errors': [] }; 
-
 
 	const errorMessages:string[][] = [
 		await validRegister([bodyObj.password1, bodyObj.password2], passwordValidate),
@@ -128,5 +135,4 @@ export async function getAllRegisterValidation(bodyObj:any){
 	}
 
 	return await successOrErrorMsg
-
 }
