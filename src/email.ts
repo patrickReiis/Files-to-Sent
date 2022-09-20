@@ -20,9 +20,7 @@ export async function sendMail(email:string, uniqueString:string){
 
 	Transport.sendMail(mailOptions, function(error:Error, response:SentMessageInfo){
 		if (error) {
-			console.log(typeof error)
 			console.log(error)
-//			console.log(error.code);
 		} else {
 			console.log(response, typeof response)
 			console.log(`Message sent to ${email}`)
