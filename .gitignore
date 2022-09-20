@@ -1,3 +1,6 @@
+# Inside this folder there is a file called dev.env, where I keep all of my enviorment variables 
+config/
+
 # Logs
 logs
 *.log
