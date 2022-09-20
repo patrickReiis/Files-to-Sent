@@ -74,12 +74,18 @@ function isUsernameValid(username:string){
 		
 }
 
-function usernameValidate(usernameArr:string[]){
+async function usernameValidate(usernameArr:string[]){
 	const username = usernameArr[0];
 	const errorMessage = [];
 
 	if( !isUsernameValid(username) ){
 		errorMessage.push(request_UsernameNotValid)
+	}
+
+	const possibleUsername = await dataSource.getRepository(UserAccount).findOneBy({username:username});
+
+	if (possibleUsername !== null){
+		errorMessage.push('You cannot use this username. Use another one.')
 	}
 
 	return errorMessage

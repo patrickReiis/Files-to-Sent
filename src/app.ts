@@ -13,7 +13,7 @@ import * as email from './email';
 import { strict as assert} from 'assert';
 import * as customCookie from './customCookie';
 import * as customDates from './dates';
-
+import { bot } from './bot/bot';bot; // If I don't type 'bot' the bot listener does not work. 
 
 const port = process.env.PORT || 3000;
 const hostname = 'localhost';
@@ -172,7 +172,7 @@ async function isUserAuthenticated(cookies:string|undefined):Promise<boolean>{
 	if ( customDates.isCookieExpired(today, <Date>cookieAge) ){
 		user.cookieExpires = null;
 		user.sessionId = null;
-		dataSource.getRepository(UserAccount).save(user);
+		await dataSource.getRepository(UserAccount).save(user);
 		return false
 	}
 

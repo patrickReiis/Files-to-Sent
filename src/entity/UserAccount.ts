@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { UserTelegram } from './UserTelegram';
 
 @Entity()
 export class UserAccount {
@@ -6,7 +7,7 @@ export class UserAccount {
 	@PrimaryGeneratedColumn()
 	id:number
 
-	@Column('varchar', { length: 255 })
+	@Column('varchar', { length: 255, unique:true })
 	username:string
 
 	@Column('varchar', { length: 100, unique: true })
@@ -26,5 +27,8 @@ export class UserAccount {
 
 	@Column('timestamp', {nullable:true})
 	cookieExpires: Date|null;
+
+	@OneToMany(() => UserTelegram, (userTelegram) => userTelegram.owner )
+	telegramUsers: UserTelegram[]
 
 }
