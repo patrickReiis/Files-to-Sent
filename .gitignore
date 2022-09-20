@@ -1,3 +1,6 @@
+# Inside this folder there is a .env file
+config/
+
 # Logs
 logs
 *.log
