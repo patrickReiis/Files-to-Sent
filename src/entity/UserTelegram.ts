@@ -7,7 +7,7 @@ export class UserTelegram {
 	@PrimaryGeneratedColumn()
 	tableId:number;
 
-	@Column('integer', { unique: true } )
+	@Column('bigint', { unique: true } )
 	telegramId: number;
 	
 	@Column('varchar', { unique: true, nullable:true } ) // Username may not be avaiable for some reason.  
