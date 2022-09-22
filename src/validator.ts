@@ -1,3 +1,9 @@
+const path = require('path')
+
+import { UserAccount } from './entity/UserAccount';
+import { strict as assert } from 'assert';
+import { dataSource } from './get-data-source';
+
 const passwordLength = 10;
 const request_EmailNotValid = `The email is not valid`;
 const request_UsernameNotValid = `The username can only contain letters and underscores between words`;
@@ -5,9 +11,6 @@ const request_PasswordNotValid = `The password must have at least ${passwordLeng
 const request_PasswordDoesNotMatch = `The password does not match`;
 const request_SendStringPass = `The password format must be a string`;
 const request_SendStringEmail = `The email must be a string`;
-import { UserAccount } from './entity/UserAccount';
-import { strict as assert } from 'assert';
-import { dataSource } from './get-data-source';
 
 function isEmailValid(email:string){
 	// Checks if email formatting is correct
@@ -141,4 +144,34 @@ export async function getAllRegisterValidation(bodyObj:any){
 	}
 
 	return await successOrErrorMsg
+}
+
+export function isUrlBodyValid(body:any):boolean{
+    try {
+        if (Object.keys(body).length !== 1) return false;
+        if (!('url' in body)) return false;
+        try {
+            const myUrl = new URL(body['url']) // Tries to create an URL, if it throws an error I know that the URL is not valid
+            if (myUrl.protocol === 'https:' || myUrl.protocol === 'http:') {
+                const extName = path.extname(myUrl.href);
+                switch (extName){
+                    case '.pdf':
+                        return true
+                    case '.gif':
+                        return true
+                    case '.zip':
+                        return true
+                }
+            }
+            
+            return false
+        }
+        catch(error){
+            console.log(error)
+            return false
+        }
+    } catch (error){
+        console.log(error);
+        return false
+    }
 }
