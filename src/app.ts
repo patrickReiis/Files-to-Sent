@@ -13,7 +13,7 @@ import * as email from './email';
 import { strict as assert} from 'assert';
 import * as customCookie from './customCookie';
 import * as customDates from './dates';
-import { bot } from './bot/bot';bot; // If I don't type 'bot' the bot listener does not work. 
+import { bot } from './bot/bot';
 
 const port = process.env.PORT || 3000;
 const hostname = 'localhost';
@@ -156,27 +156,34 @@ async function handleLogin(body:any, res:ServerResponse){
 }
 
 async function isUserAuthenticated(cookies:string|undefined):Promise<boolean>{
-    if (!cookies) return false;
+    try {
+        if (!cookies) return false;
 
-    const cookieObj = customCookie.parse(cookies);
+        const cookieObj = customCookie.parse(cookies);
 
-    if (!cookieObj.sessionid) return false;
+        if (!cookieObj.sessionid) return false;
 
-    const user = await dataSource.getRepository(UserAccount).findOneBy({sessionId:cookieObj.sessionid});
+        const user = await dataSource.getRepository(UserAccount).findOneBy({sessionId:cookieObj.sessionid});
 
-    if (!user) return false;	
+        if (!user) return false;	
 
-    const today = new Date()
-    const cookieAge = user.cookieExpires;
+        const today = new Date()
+        const cookieAge = user.cookieExpires;
 
-    if ( customDates.isCookieExpired(today, <Date>cookieAge) ){
-        user.cookieExpires = null;
-        user.sessionId = null;
-        await dataSource.getRepository(UserAccount).save(user);
+        if ( customDates.isCookieExpired(today, <Date>cookieAge) ){
+            user.cookieExpires = null;
+            user.sessionId = null;
+            await dataSource.getRepository(UserAccount).save(user);
+            return false
+        }
+
+        return true
+    } 
+
+    catch (error){
+        console.log(error);
         return false
     }
-
-    return true
 }
 
 const server = http.createServer(async(req:IncomingMessage, res:ServerResponse) => {
@@ -230,12 +237,12 @@ const server = http.createServer(async(req:IncomingMessage, res:ServerResponse) 
             } 
             else {
                 res.writeHead(302, {'Location':'/login', 'Set-Cookie':['sessionid=null;Max-Age=0']})
-                res.end('tchau, you should not see it if you have a valid cookie')
+                res.end('You need to log in first')
             }
         }
         else if (req.url === '/login'){
             const successFlashMsg = req.headers.cookie ? customCookie.parse(<string>req.headers.cookie).success : '';
-            res.end(`look at the console + ${successFlashMsg}`)
+            res.end(`Hi ${successFlashMsg}, log in to join`)
         }	
         else if ( (req.url as string).slice(0, '/api/v1/verify?'.length) === '/api/v1/verify?'){
             const fullURL = new URL( (req.url as string) , `http://${req.headers.host}`);
@@ -306,9 +313,58 @@ const server = http.createServer(async(req:IncomingMessage, res:ServerResponse) 
                     handleLogin(body, res);
                 }
                 else if (req.url?.toLowerCase() === '/api/v1/sendall'){
+                    
+                    if (await isUserAuthenticated(req.headers.cookie)){
+                        if (validator.isUrlBodyValid(body) === false){
+                            res.writeHead(400, {'Content-Type':'application/json'});
+                            res.end(JSON.stringify({error: 'Send ONLY one VALID URL. The json body format is { url: <your-url> }. Also remember that the only allowed files are PDF, GIF and ZIP'}))
+                            return 
+                        } 
 
-                    // user must me authenticated, handle that later
-                    res.end('send here damn it')
+                        const urlFilePath = body['url']
+                        const sessionIdString = customCookie.parse(req.headers.cookie as string)?.sessionid
+                        const userAccount = await dataSource.getRepository(UserAccount).findOne({
+                            where: {
+                                sessionId: sessionIdString
+                            },
+                            relations: {
+                                telegramUsers:true
+                            }
+                        })
+                        const telegramUsers = userAccount?.telegramUsers;
+                        if (telegramUsers == undefined || telegramUsers.length == 0){
+                            res.writeHead(404, {'Content-Type': 'application/json'})
+                            res.end(JSON.stringify({error:'We tried to send your requested file to your users, but you don\'t have any users attached to you.'}))
+                            return
+                        }
+
+                        const responseInfo = {'SentTo': [] as string[], 'CouldNotSentTo': [] as string[]}
+
+                        // Iterate over telegram users, get their Id, and use that Id to send the file
+                        for (let i = 0; i < telegramUsers.length; i++){
+                            try {
+                                await bot.api.sendDocument(telegramUsers[i].telegramId, urlFilePath) 
+                                responseInfo['SentTo'].push(telegramUsers[i].first_name)
+                            } catch (error:any){
+                                console.log(error)
+
+                                if (error.error_code === 403){ // user has blocked the bot (bots in telegram cannot start conversations)
+                                    responseInfo['CouldNotSentTo'].push(telegramUsers[i].first_name)
+                                }
+                                else {
+                                    res.writeHead(400, {'Content-Type': 'application/json'});
+                                    res.end(JSON.stringify({error: 'Your URL is invalid, try to use a new URL instead or see if the one you used is valid. Depending on the name of the file telegram doesn\'t allow to send'}))
+                                    return
+                                }
+                            }
+                        }
+                        res.writeHead(200, {'Content-Type': 'application/json'});
+                        res.end(JSON.stringify(responseInfo))
+                    } 
+                    else {
+                        res.writeHead(302, {'Location':'/login', 'Set-Cookie':['sessionid=null;Max-Age=0']})
+                        res.end()
+                    }
                 }	
                 else {
                     res.writeHead(404);
