@@ -53,7 +53,6 @@ function isBodyKeysValid(body:object, mode:string){
         }	
         return false
     }
-
 }
 
 function isValidJSON(data:string){
@@ -82,7 +81,7 @@ async function handleRegister(body:any, res: ServerResponse){
             user.uniqueString = await customRandom.randStr();
 
             await dataSource.getRepository(UserAccount).save(user);
-            //await email.sendMail(user.email, user.uniqueString)
+            await email.sendMail(user.email, user.uniqueString)
 
             res.writeHead(200, {'Content-Type':'application/json'});
             res.end(JSON.stringify({'success':`An email has been sent to ${user.email} Check it out and click in the link to validate your account`}))
@@ -111,7 +110,7 @@ async function handleLogin(body:any, res:ServerResponse){
                 // If user already has a session, send it back again through the cookie. This helps if the user logs in into differents browsers
                 if (user.sessionId && user.cookieExpires && !customDates.isCookieExpired(new Date(), <Date>user.cookieExpires)){
                     cookieExpiresHeader = user.cookieExpires;
-                }
+                } // Create session for user
                 else {
                     user.sessionId = await customRandom.sessionId();
                     user.cookieExpires = customDates.getNextYear(new Date()); 
@@ -120,24 +119,25 @@ async function handleLogin(body:any, res:ServerResponse){
                     cookieExpiresHeader = user.cookieExpires;
                 }				
 
-                res.writeHead(302, {
-                    'Location':'/dashboard',
+                res.writeHead(200, {
                     'Set-Cookie':[
                         `sessionid=${user.sessionId};Path=/;Expires=${cookieExpiresHeader.toUTCString()};HttpOnly`
-                    ]
+                    ],
+                    'Content-Type': 'application/json'
                 })
-                res.end()
+                res.end(JSON.stringify({'success': 'You are logged in! Now you can send files to your users :)'}))
             }
 
             // User exists but is not active
             else if (user && user.isActive === false){
-                res.writeHead(400) // If the user is not active, there is no point in doing the request again	
-                res.end('user not active')
+                res.writeHead(400, {'Content-Type':'application/json'}) // If the user is not active, there is no point in doing the request again	
+                res.end(JSON.stringify({'error': 'You need to validate your account. Check the email you used to register'}))
             }
 
             // User exists, user is active but the password is incorrect 
             else if (user && user.isActive === true){ 
-                res.end('password does not match, damn')
+                res.writeHead(400, {'Content-Type':'application/json'})
+                res.end(JSON.stringify({'error': 'Password does not match'}))
             }
 
             // User does not exist
@@ -187,113 +187,39 @@ async function isUserAuthenticated(cookies:string|undefined):Promise<boolean>{
 }
 
 const server = http.createServer(async(req:IncomingMessage, res:ServerResponse) => {
-    // Build filepath
-    let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
-
-    // Extension of file
-    let extname = path.extname(filePath);
-
-    // Initial content type
-    let contentType = 'text/html';
-
-    // Check ext and set content type
-    switch(extname) {
-        case '.js':
-            contentType = 'text/javascript';
-        break;
-
-        case '.html':
-            contentType = 'text/html';
-        break;
-
-        case '.css':
-            contentType = 'text/css';
-        break;
-
-        case '.json':
-            contentType = 'application/json';
-        break;
-
-        case '.png':
-            contentType = 'image/png';
-        break;
-
-        case '.jpg':
-            contentType = 'image/jpg';
-        break;
-        case '.otf':
-            contentType = 'application/x-font-opentype';
-        break;
-    }
 
     if (req.method === 'GET'){
 
-        if (req.url === '/dashboard'){
-
-            // if user is authorized (both activate and with session) allow to proceed
-            if (await isUserAuthenticated(req.headers.cookie)){
-                const sessionid = customCookie.parse(<string>req.headers.cookie).sessionid
-                res.end('don\' give up, pls '+ sessionid )
-            } 
-            else {
-                res.writeHead(302, {'Location':'/login', 'Set-Cookie':['sessionid=null;Max-Age=0']})
-                res.end('You need to log in first')
-            }
-        }
-        else if (req.url === '/login'){
-            const successFlashMsg = req.headers.cookie ? customCookie.parse(<string>req.headers.cookie).success : '';
-            res.end(`Hi ${successFlashMsg}, log in to join`)
-        }	
-        else if ( (req.url as string).slice(0, '/api/v1/verify?'.length) === '/api/v1/verify?'){
+        if ( (req.url as string).slice(0, '/api/v1/verify?'.length) === '/api/v1/verify?'){
             const fullURL = new URL( (req.url as string) , `http://${req.headers.host}`);
                 const confirmParameterValue:string|null = fullURL.searchParams.get('confirm');
             const parametersLength = Array.from(fullURL.searchParams.keys()).length;
 
-            if ( /^[0-9]+$/.test((confirmParameterValue as string)) && parametersLength === 1 ){ // Make sure it's only made of digits and there is only one parameter 
+            // Make sure the value of the Query Params is only made of digits and there is only one key
+            // Examples:
+            // localhost:3000/api/v1/verify?confirm=12345            VALID
+            // localhost:3000/api/v1/verify?confirm=12a345           NOT VALID
+            if ( /^[0-9]+$/.test((confirmParameterValue as string)) && parametersLength === 1 ){ 
                 // load user, validate user, remove user unique string (make null), redirect
                 const user = await dataSource.getRepository(UserAccount).findOneBy({uniqueString:(confirmParameterValue as string)});
                 if (user){
                     user.isActive = true;
                     user.uniqueString = null;
                     await dataSource.getRepository(UserAccount).save(user)
-                    res.writeHead(302, {
-                        'Location':'/login',
-                        'Set-Cookie':
-                            [
-                            `success=${btoa('Your account has been validated, log in to join.')};Path=/;Max-Age=1`,
-                        ] // The cookie will contain a sucess flash message (if the user refresh the page it will dissapear because Max-Age is set to 1 second)
-                    });
-                    res.end()
+                    res.writeHead(200);
+                    res.end(JSON.stringify({'success': 'Your account has been validated, log in to join'}))
                 } else {
                     res.writeHead(404) 
-                    res.end() // I can load the not found HTML page here in the future. 03/09/2022
+                    res.end() 
                 }
             } else {
                 res.writeHead(400, {'Content-Type':'application/json'})
-                res.end(JSON.stringify({error:'URL not valid'}))
+                res.end(JSON.stringify({error:'URL not valid. Only numbers allowed.'}))
             }	
         } 
         else {
-            fs.readFile(filePath, (err:NodeJS.ErrnoException, content:Buffer) => {
-                if (err) {
-                    if (err.code === 'ENOENT'){
-                        // Page not found
-                        fs.readFile(path.join(__dirname, 'public', '404.html'), (err:NodeJS.ErrnoException, content:Buffer) => {
-                            if (err) throw err;
-                            res.writeHead(200, {'Content-Type':'text/html'});
-                            res.end(content);
-                        })
-                    } else {
-                        // Some server error 
-                        res.writeHead(500);
-                        res.end(`Server Error: ${err.code}`)
-                    }
-                } else {
-                    // Success 
-                    res.writeHead(200, {'Content-Type': contentType});
-                    res.end(content); 
-                }
-            })
+            res.writeHead(404, {'Content-Type':'application/json'});
+            res.end(JSON.stringify({'error': 'Not found :('}))
         }
     }
 
@@ -362,13 +288,13 @@ const server = http.createServer(async(req:IncomingMessage, res:ServerResponse) 
                         res.end(JSON.stringify(responseInfo))
                     } 
                     else {
-                        res.writeHead(302, {'Location':'/login', 'Set-Cookie':['sessionid=null;Max-Age=0']})
+                        res.writeHead(401, {'Set-Cookie':['sessionid=null;Max-Age=0']})
                         res.end()
                     }
                 }	
                 else {
                     res.writeHead(404);
-                    res.end('not found');
+                    res.end('Not Found :(');
                 }
             } else {
                 res.writeHead(400)
