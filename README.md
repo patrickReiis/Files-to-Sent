@@ -42,7 +42,7 @@ First you need to create an account:
 * localhost:3000/api/register | Method: POST | Body Format: JSON | JSON Format: {"username":"<your-username>", "email":"<your-email>", "password1":"<your-password>", "password2": "<your-password>"}
 
 Then you will recieve an email with a confirmation link to validate your account, the **confirm** key of the **query parameter** will always be a sequence of random numbers.
-* **localhost:3000/api/verify?confirm=<sequence of random numbers>** | Method: GET 
+* **localhost:3000/api/verify?confirm=< sequence of random numbers >** | Method: GET 
 
 Now you can log-in, if everything goes right in this process you will recieve a **sessionid cookie**.
 * **localhost:3000/api/login** | Method: POST | Body Format: JSON | JSON Format: {"email":"<your-email>", "password": "<your-password>"}
