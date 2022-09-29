@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-import { SentMessageInfo } from 'nodemailer'
+import { SentMessageInfo } from 'nodemailer';
 
 export async function sendMail(email:string, uniqueString:string){
 	let Transport = nodemailer.createTransport({
