@@ -51,16 +51,18 @@ Now you can send files to the users attached to your bot:
 * **localhost:3000/api/v1/sendAll** | Method: POST | Body Format: JSON | JSON Format: {"url":"<your-url>"}
 
 ## Making users attach to your account
-As I said in the Note section, bots in Telegram cannot start conversations, so you need to send a link of your bot to the users you want to send the files and they need to click in the 'start' button.
+As I said in the Note section bots in Telegram cannot start conversations so you need to send a link of your bot to the users you want to send the files and they need to click in the 'start' button.
   
 You can send any of those URLs to your users: 
 * https://t.me/< your bot name >_bot | Recommended 
 * https://web.telegram.org/k/#@< your bot name >_bot | Works only in web telegram
   
-Once your users press the button start, they will recieve some instructions of commands avaiable in the bot chat.
+Once your users press the button start, they will recieve some instructions of commands available in the bot chat.
 You also need to **say your username** to your uses so they can use the /get command in the bot chat.
   
 ## Final Note
   I hope you found this project interesting, I'm still a begginner in programming but I will keep doing projects until I become good (and hopefully get a job)
+  
   Espero que tenha achado interessante esse projeto, eu ainda sou um iniciante mas irei continuar fazendo projetos até eu ficar bom (e conseguir um trabalho)
+  
  :smiley:
